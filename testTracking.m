@@ -1,7 +1,9 @@
 clearvars
 clc
 
-file = 'D:\Documents\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Massimo\Plate2 Delta38_5pMoles009_substack.tif';
+%file = 'D:\Documents\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Massimo\Plate2 Delta38_5pMoles009_substack.tif';
+
+file = 'D:\Work\Projects\massimo\data\plate2_024_A.tif';
 
 nFrames = numel(imfinfo(file));
 
@@ -15,25 +17,31 @@ vid = VideoWriter('test.avi');
 vid.FrameRate = 5;
 open(vid)
 
-for iT = 100:200
+%Add distance to red?
 
-    I = double(imread(file, iT));
+for iT = 1:nFrames
+
+    %I = double(imread(file, iT));
 %    I = medfilt2(I, [3 3]);
 
-    I2 = imresize(I, 2, 'nearest');
+    %I2 = imresize(I, 2, 'nearest');
+
+    Irgb = double(imread(file, iT));
+    
+    I2 = imresize(Irgb(:, :, 2), 2, 'nearest');    
 
     dg1 = imgaussfilt(I2, 1);
     dg2 = imgaussfilt(I2, 6);
 
     dog = dg1 - dg2;
 
-    spots = dog > 600;
+    spots = dog > 50;
 
-    cellMask = I2 == 0;
-    cellMask = imdilate(cellMask, strel('disk', 10));
-    % showoverlay(spots, bwperim(cellMask))
+    % cellMask = I2 == 0;
+    % cellMask = imdilate(cellMask, strel('disk', 10));
+    % % showoverlay(spots, bwperim(cellMask))
 
-    spots(cellMask) = 0;
+    % spots(cellMask) = 0;
 
     spots = bwareaopen(spots, 2);
     % imshow(spots)
@@ -42,6 +50,11 @@ for iT = 100:200
 
     % spots = imresize(spots, 0.5, 'nearest');
     
+    if ~any(spots, 'all')
+        break;
+    end
+
+
     data = regionprops(spots, 'Centroid');
 
     L = assignToTrack(L, iT, data);
