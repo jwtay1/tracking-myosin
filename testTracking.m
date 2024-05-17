@@ -59,7 +59,7 @@ for iT = 1:nFrames
 
     L = assignToTrack(L, iT, data);
 
-    Iout = showoverlay(I2, spots, 'Opacity', 30);
+    Iout = showoverlay(Irgb, spots, 'Opacity', 30);
 
     for ii = L.activeTrackIDs
 
