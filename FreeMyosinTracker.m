@@ -242,7 +242,7 @@ classdef FreeMyosinTracker
 
             dog = dg1 - dg2;
 
-            mask = dog > 20;
+            mask = dog > 10;
             mask = bwareaopen(mask, 2);
 
             mask = imresize(mask, 0.5, 'nearest');

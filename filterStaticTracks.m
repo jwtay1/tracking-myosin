@@ -1,11 +1,15 @@
 clearvars
 clc
 
-dataDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240524';
+dataDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607';
 
 files = dir(fullfile(dataDir, '*.mat'));
 
-outputDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240529';
+outputDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered';
+
+if ~exist(outputDir, 'dir')
+    mkdir(outputDir)
+end
 
 for iFile = 1:numel(files)
 
@@ -18,7 +22,8 @@ for iFile = 1:numel(files)
 
         ct = getTrack(L, ii);
 
-        if numel(ct.Frames) < 2
+        if numel(ct.Frames) < 10
+            %Filter tracks < 5 frame slong
             continue;
         end
 
@@ -58,6 +63,40 @@ for iFile = 1:numel(files)
 
     end
     % hold off
+    % %% Try to combine tracks
+    % 
+    % nFrames = numel(imfinfo(file));
+    % 
+    % for ii = 1:L.NumTracks
+    % 
+    %     ct = getTrack(L, ii);
+    % 
+    %     if ct.Frames(end) ~= nFrames
+    % 
+    %         for jj = ii:L.NumTracks
+    % 
+    %             %Find a nearby track that starts on a similar frame
+    % 
+    % 
+    % 
+    % 
+    % 
+    % 
+    %         end
+    % 
+    % 
+    % 
+    % 
+    % 
+    % 
+    % 
+    %     end
+    % 
+    % end
+
+
+
+
 
     %%
     if ~exist("filteredTracks", 'var')
