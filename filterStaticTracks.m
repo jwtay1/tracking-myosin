@@ -62,41 +62,6 @@ for iFile = 1:numel(files)
         % end
 
     end
-    % hold off
-    % %% Try to combine tracks
-    % 
-    % nFrames = numel(imfinfo(file));
-    % 
-    % for ii = 1:L.NumTracks
-    % 
-    %     ct = getTrack(L, ii);
-    % 
-    %     if ct.Frames(end) ~= nFrames
-    % 
-    %         for jj = ii:L.NumTracks
-    % 
-    %             %Find a nearby track that starts on a similar frame
-    % 
-    % 
-    % 
-    % 
-    % 
-    % 
-    %         end
-    % 
-    % 
-    % 
-    % 
-    % 
-    % 
-    % 
-    %     end
-    % 
-    % end
-
-
-
-
 
     %%
     if ~exist("filteredTracks", 'var')

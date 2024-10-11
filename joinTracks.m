@@ -1,9 +1,11 @@
 %Join tracks
 
-matFile = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered\RGB_WT_plate1_labelled_2_25_50pm007_A_filtered.mat';
+orMatFile = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240524\RGB_plate2_027_copy_A.mat';
+load(orMatFile)
+matFile = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered\RGB_plate2_027_copy_A_filtered.mat';
 load (matFile)
 
-file = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\data\selected\RGB_WT_plate1_labelled_2_25_50pm007_A.tif';
+% file = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\data\selected\RGB_WT_plate1_labelled_2_25_50pm007_A.tif';
 outputDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered';
 
 for iF = 1:numel(filteredTracks)
@@ -14,7 +16,7 @@ for iF = 1:numel(filteredTracks)
 end
 
 %%
-trackToJoin = [1 5];
+trackToJoin = [1 4];
 
 for ii = 1:size(trackToJoin, 1)
 
