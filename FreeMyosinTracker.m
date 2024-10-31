@@ -1,12 +1,34 @@
 classdef FreeMyosinTracker
+    %FREEMYOSINTRACKER  Track myosin molecules in videos
+    %
+    %  F = FREEMYOSINTRACKER creates a new object that can be used to track
+    %  myosin molecules in timelapse fluorescence datasets. The datasets
+    %  are assumed to consist of two channel images: (1) fluorescently
+    %  labeled myosin spots and (2) fluroescently labeled actin filaments.
+    %
+    %  See also: FreeMyosinTracker/processVideos
+   
 
     properties
+
+        spotChannel = 1;
+        filamentChannel = 2;
 
     end
 
     methods
 
         function processVideos(obj, folder, outputFolder, varargin)
+            %PROCESSVIDEOS  Process videos
+            %
+            %  PROCESSVIDEOS(F, INPUT_DIR, OUTPUT_DIR) processes all
+            %  nd2-files in the INPUT_DIR. The following output files will
+            %  be written to the OUTPUT_DIR:
+            %    * An AVI-file, upscaled by 6x, showing tracked particle
+            %      IDs and trajectories
+            %    * A MAT-File containing raw data
+            %    * A TIFF-file containing particle masks
+            %   
 
             %Parse inputs
             if ~exist(outputFolder, 'dir')
@@ -24,8 +46,8 @@ classdef FreeMyosinTracker
 
                 %Set up linking object
                 L = LAPLinker;
-                L.MaxTrackAge = 1;
-                L.LinkScoreRange = [0 6];
+                L.MaxTrackAge = 2;
+                L.LinkScoreRange = [0 8];
 
                 [~, fn] = fileparts(files(iFile).name);
 
@@ -46,7 +68,7 @@ classdef FreeMyosinTracker
                     end
                     
                     %Find myosin particles
-                    Ispot = double(Irgb(:, :, 2));
+                    Ispot = double(Irgb(:, :, obj.spotChannel));
 
                     %Expand image to make it easier to identify particles
                     mask = FreeMyosinTracker.identifySpots(Ispot);
@@ -56,7 +78,11 @@ classdef FreeMyosinTracker
                     end
 
                     %Segment filaments
-                    Ifil = Irgb(:, :, 1);
+                    try
+                    Ifil = Irgb(:, :, obj.filamentChannel);
+                    catch
+                        keyboard
+                    end
 
                     Ifil(Ifil == 0) = NaN;
                     th = graythresh(Ifil);
@@ -70,6 +96,12 @@ classdef FreeMyosinTracker
                     %Measure amount of red under the particle
                     data = regionprops(mask, Ifil, 'Centroid', 'MeanIntensity');
 
+                    %Filter out dim particles
+                    meanInts = [data.MeanIntensity];
+
+                    thInt = prctile(Ispot(:), 90);
+                    data(meanInts <= thInt) = [];
+
                     for ii = 1:numel(data)
                         loc = round(data(ii).Centroid);
 
@@ -82,13 +114,10 @@ classdef FreeMyosinTracker
                     %--Generate output movies and images--%
                     expandSize = 6;
 
-                    Iout = showoverlay(imresize(Irgb, expandSize),...
-                        imresize(mask, expandSize, 'nearest'), 'Opacity', 30);
-                    Iout = showoverlay(Iout, ...
-                        bwperim(imresize(filamentMask, expandSize, 'nearest')), 'color', [1 1 0]);
+                    Iout = imresize(Irgb, expandSize);
 
-                    IoutL = Iout;
-                    IoutR = Iout;
+                    % IoutL = Iout;
+                    % IoutR = Iout;
 
                     for ii = L.activeTrackIDs
 
@@ -96,24 +125,26 @@ classdef FreeMyosinTracker
 
                         ct.Centroid = ct.Centroid * expandSize;
 
-                        IoutL = insertShape(IoutL, 'filled-circle', ...
+                        Iout = insertShape(Iout, 'filled-circle', ...
                             [ct.Centroid(end, 1), ct.Centroid(end, 2), 2], ...
                             'ShapeColor', 'white');
 
+                        Iout = insertText(Iout, [ct.Centroid(end, 1), ct.Centroid(end, 2)], ...
+                            int2str(ii), 'BoxOpacity', 0, 'TextColor', 'yellow', ...
+                            'AnchorPoint', 'CenterTop');
+
                         if numel(ct.Frames) > 1
                             
-                            IoutL = insertShape(IoutL, 'line', ct.Centroid, ...
+                            Iout = insertShape(Iout, 'line', ct.Centroid, ...
                                 'ShapeColor', 'magenta');
 
-                        end
-
-                        IoutR = insertText(IoutR, [ct.Centroid(end, 1), ct.Centroid(end, 2)], ...
-                            int2str(ii), 'BoxOpacity', 0, 'TextColor', 'blue', ...
-                            'AnchorPoint', 'Center');
+                        end                      
 
                     end
 
-                    Iout = [IoutL, zeros(size(IoutL, 1), 3, 3, 'uint8'), IoutR];
+                    %Iout = IoutL;
+
+                    % Iout = [IoutL, zeros(size(IoutL, 1), 3, 3, 'uint8'), IoutR];
 
                     % keyboard
                     writeVideo(vid, Iout);
@@ -169,7 +200,7 @@ classdef FreeMyosinTracker
                 %Read image
                 Irgb = imread(file, iT);
 
-                Ispot = Irgb(:, :, 2);
+                Ispot = Irgb(:, :, obj.spotChannel);
 
                 mask = FreeMyosinTracker.identifySpots(Ispot);
 
@@ -234,18 +265,35 @@ classdef FreeMyosinTracker
             addParameter(ip, 'spotRange', [3 6]);
             parse(ip, varargin{:})
 
+            I = medfilt2(I, [3 3]);
+
             %Expand image to make it easier to identify particles
-            I = imresize(I, 2, 'nearest');
+            I = imresize(I, 4);
             
             dg1 = imgaussfilt(I, ip.Results.spotRange(1));
             dg2 = imgaussfilt(I, ip.Results.spotRange(2));
 
             dog = dg1 - dg2;
 
-            mask = dog > 10;
+            mask = dog > 15;
             mask = bwareaopen(mask, 2);
 
-            mask = imresize(mask, 0.5, 'nearest');
+            dd = -bwdist(~mask);
+            dd(~mask) = -Inf;
+            dd = imhmin(dd, 0.1);
+
+            L = watershed(dd);
+
+            mask(L == 0) = false;
+            mask = bwareaopen(mask, 3);
+
+            mask = bwmorph(mask, 'hbreak');
+            mask = bwmorph(mask, 'shrink', 1);
+
+            mask = imresize(mask, 0.25, 'nearest');
+
+            % imshow(mask, 'InitialMagnification', 400)
+     
 
         end
 
@@ -304,8 +352,6 @@ classdef FreeMyosinTracker
 
         end
             
-
-
         function y = gaussmodel(x, xdata)
 
             A = x(1);
