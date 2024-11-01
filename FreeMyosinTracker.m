@@ -90,8 +90,8 @@ classdef FreeMyosinTracker
                     filamentMask = Ifil > (th * 255);
                     filamentMask = imopen(filamentMask, strel('disk', 1));
 
-                    %Measure distance to closest filament pixel
-                    dist = bwdist(filamentMask);
+                    % %Measure distance to closest filament pixel
+                    % dist = bwdist(filamentMask);
 
                     %Measure amount of red under the particle
                     data = regionprops(mask, Ifil, 'Centroid', 'MeanIntensity');
@@ -102,14 +102,18 @@ classdef FreeMyosinTracker
                     thInt = prctile(Ispot(:), 90);
                     data(meanInts <= thInt) = [];
 
-                    for ii = 1:numel(data)
-                        loc = round(data(ii).Centroid);
-
-                        data(ii).Distance = dist(loc(2), loc(1));
-                    end
+                    % for ii = 1:numel(data)
+                    %     loc = round(data(ii).Centroid);
+                    % 
+                    %     data(ii).Distance = dist(loc(2), loc(1));
+                    % end
 
                     %Track particles
-                    L = assignToTrack(L, iT, data);
+                    try
+                        L = assignToTrack(L, iT, data);
+                    catch
+                        keyboard
+                    end
 
                     %--Generate output movies and images--%
                     expandSize = 6;
@@ -134,10 +138,12 @@ classdef FreeMyosinTracker
                             'AnchorPoint', 'CenterTop');
 
                         if numel(ct.Frames) > 1
-                            
+                            try
                             Iout = insertShape(Iout, 'line', ct.Centroid, ...
                                 'ShapeColor', 'magenta');
-
+                            catch
+                                continue
+                            end
                         end                      
 
                     end
@@ -275,7 +281,7 @@ classdef FreeMyosinTracker
 
             dog = dg1 - dg2;
 
-            mask = dog > 15;
+            mask = dog > 10;
             mask = bwareaopen(mask, 2);
 
             dd = -bwdist(~mask);
@@ -288,7 +294,7 @@ classdef FreeMyosinTracker
             mask = bwareaopen(mask, 3);
 
             mask = bwmorph(mask, 'hbreak');
-            mask = bwmorph(mask, 'shrink', 1);
+            %mask = bwmorph(mask, 'shrink', 1);
 
             mask = imresize(mask, 0.25, 'nearest');
 
