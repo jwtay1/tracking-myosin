@@ -1,94 +1,77 @@
-%Join tracks
+function joinTracks(matfilePath, track1, track2)
 
-orMatFile = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240524\RGB_plate2_027_copy_A.mat';
-load(orMatFile)
-matFile = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered\RGB_plate2_027_copy_A_filtered.mat';
-load (matFile)
+load(matfilePath);
 
-% file = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\data\selected\RGB_WT_plate1_labelled_2_25_50pm007_A.tif';
-outputDir = 'C:\Users\Jian Tay\OneDrive - UCB-O365\Shared\Share with Leinwand Lab\Myosin tracking\Processed\20240607_filtered';
+tracks = L.tracks;
 
-for iF = 1:numel(filteredTracks)
+for xx = 1:numel(track1)
 
-    disp(['Track = ', int2str(iF)])
-    disp(filteredTracks(iF).Frames)
-
+    tracks = joinTrack(tracks, track1(xx), track2(xx), 'true');
 end
 
-%%
-trackToJoin = [1 4];
 
-for ii = 1:size(trackToJoin, 1)
+[~, fn] = fileparts(matfilePath);
 
-    fields = fieldnames(filteredTracks);
+save([fn, '_edited.mat'], 'tracks');
 
-    for iField = 1:numel(fields)
+%Remake the movie
+nFrames = numel(imfinfo(file));
 
-        if size(filteredTracks(trackToJoin(ii, 1)).(fields{iField}), 1) == 1
-            filteredTracks(trackToJoin(ii, 1)).(fields{iField}) = ...
-                [filteredTracks(trackToJoin(ii, 1)).(fields{iField}), ...
-                filteredTracks(trackToJoin(ii, 2)).(fields{iField})];
+expandSize = 6;
 
+vid = VideoWriter([fn, '_edited.avi']);
+vid.FrameRate = 5;
+open(vid)
 
-        else
+for iT = 1:nFrames
 
-        filteredTracks(trackToJoin(ii, 1)).(fields{iField}) = ...
-            cat(1, filteredTracks(trackToJoin(ii, 1)).(fields{iField}), ...
-            filteredTracks(trackToJoin(ii, 2)).(fields{iField}));
-        end
+    %--Generate output movies and images--%
+    %Read image
+    Irgb = imread(file, iT);
+
+    %Crop the image
+    if iT == 1
+        [Irgb, cropRange] = FreeMyosinTracker.cropImage(Irgb);
+    else
+        Irgb = FreeMyosinTracker.cropImage(Irgb, cropRange);
     end
 
-end
+    Iout = imresize(Irgb, expandSize);
 
-for ii = 1:size(trackToJoin, 1)
+    for ii = 1:numel(tracks)
 
-    filteredTracks(trackToJoin(ii, 2)) = [];
+        try
+            ct = getTrack(tracks, ii);
+        catch
+            continue
+        end
 
-end
+        if ~ismember(iT, ct.Frames)
+            continue
+        else
+            frameIdx = find(ct.Frames == iT, 1, 'first');
 
-%%
-   
-    resizeFactor = 8;
+            ct.Centroid = ct.Centroid * expandSize;
 
-    %Make a video showing only moving particles
-    [~, fn] = fileparts(file);
-    vid = VideoWriter(fullfile(outputDir, [fn, '_filtered.avi']));
-    vid.FrameRate = 5;
-    open(vid)
+            Iout = insertShape(Iout, 'filled-circle', ...
+                [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2), 2], ...
+                'ShapeColor', 'white');
 
-    nFrames = numel(imfinfo(file));
+            Iout = insertText(Iout, [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2)], ...
+                int2str(ii), 'BoxOpacity', 0, 'TextColor', 'yellow', ...
+                'AnchorPoint', 'CenterTop');
 
-    for iFrame = 1:nFrames
+            if frameIdx > 1
 
-        I = imread(file, iFrame);
-        I = I(cropRange(1):cropRange(2), cropRange(3):cropRange(4),:);
-        I = imresize(I, resizeFactor, 'nearest');
-        % imshow(I, [])
-
-        for iTrack = 1:numel(filteredTracks)
-
-            inFrame = filteredTracks(iTrack).Frames == iFrame;
-
-            frameIdx = find(inFrame, 1, 'first');
-
-            if ~isempty(frameIdx)
-
-                I = insertShape(I, 'filled-circle', ...
-                    [filteredTracks(iTrack).Centroid(frameIdx, 1) * resizeFactor, filteredTracks(iTrack).Centroid(frameIdx, 2) * resizeFactor, 4], ...
+                Iout = insertShape(Iout, 'line', ct.Centroid(1:frameIdx, :), ...
                     'ShapeColor', 'magenta');
 
-                if frameIdx > 1
-                    I = insertShape(I, 'line', filteredTracks(iTrack).Centroid(1:frameIdx, :) * resizeFactor, ...
-                        'ShapeColor', 'magenta');
-                end
             end
-
         end
 
-        writeVideo(vid, I);
-
     end
-    close(vid)
 
-    save(fullfile(outputDir, [fn, '_filtered.mat']), 'filteredTracks')
-    clearvars filteredTracks
+    writeVideo(vid, Iout);
+end
+
+close(vid)
