@@ -53,19 +53,24 @@ for iT = 1:nFrames
 
             ct.Centroid = ct.Centroid * expandSize;
 
-            Iout = insertShape(Iout, 'filled-circle', ...
-                [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2), 2], ...
-                'ShapeColor', 'white');
+            if ~isnan(ct.Centroid(frameIdx, 1))
 
-            Iout = insertText(Iout, [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2)], ...
-                int2str(ii), 'BoxOpacity', 0, 'TextColor', 'yellow', ...
-                'AnchorPoint', 'CenterTop');
+                Iout = insertShape(Iout, 'filled-circle', ...
+                    [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2), 2], ...
+                    'ShapeColor', 'white');
 
-            if frameIdx > 1
+                Iout = insertText(Iout, [ct.Centroid(frameIdx, 1), ct.Centroid(frameIdx, 2)], ...
+                    int2str(ii), 'BoxOpacity', 0, 'TextColor', 'yellow', ...
+                    'AnchorPoint', 'CenterTop');
+            end
 
-                Iout = insertShape(Iout, 'line', ct.Centroid(1:frameIdx, :), ...
+            cc = ct.Centroid(1:frameIdx, :);
+            cc(isnan(cc(:, 1)), :) = [];
+
+            if size(cc, 1) > 1
+
+                Iout = insertShape(Iout, 'line', cc, ...
                     'ShapeColor', 'magenta');
-
             end
         end
 

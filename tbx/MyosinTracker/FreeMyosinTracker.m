@@ -14,6 +14,9 @@ classdef FreeMyosinTracker
         spotChannel = 1;
         filamentChannel = 2;
 
+        maxTrackAge = 0;  %Number of frames that can be skipped before track is terminated
+        maxParticleMotion = 7;  %Maximum number of pixels a particle can move
+
     end
 
     methods
@@ -46,8 +49,8 @@ classdef FreeMyosinTracker
 
                 %Set up linking object
                 L = LAPLinker;
-                L.MaxTrackAge = 2;
-                L.LinkScoreRange = [0 8];
+                L.MaxTrackAge = obj.maxTrackAge;
+                L.LinkScoreRange = [0 obj.maxParticleMotion];
 
                 [~, fn] = fileparts(files(iFile).name);
 
@@ -77,30 +80,30 @@ classdef FreeMyosinTracker
                         break;
                     end
 
-                    %Segment filaments
-                    try
-                    Ifil = Irgb(:, :, obj.filamentChannel);
-                    catch
-                        keyboard
-                    end
-
-                    Ifil(Ifil == 0) = NaN;
-                    th = graythresh(Ifil);
-
-                    filamentMask = Ifil > (th * 255);
-                    filamentMask = imopen(filamentMask, strel('disk', 1));
+                    % %Segment filaments
+                    % Ifil = Irgb(:, :, obj.filamentChannel);
+                    % Ifil(Ifil == 0) = NaN;
+                    % th = graythresh(Ifil);
+                    % 
+                    % filamentMask = Ifil > (th * 255);
+                    % filamentMask = imopen(filamentMask, strel('disk', 1));
 
                     % %Measure distance to closest filament pixel
                     % dist = bwdist(filamentMask);
 
                     %Measure amount of red under the particle
-                    data = regionprops(mask, Ifil, 'Centroid', 'MeanIntensity');
+                    %data = regionprops(mask, Ifil, 'Centroid', 'MeanIntensity');
+                    data = regionprops(mask, 'Centroid');
+                    for iData = 1:numel(data)
+                        data(iData).Centroid = data(iData).Centroid / 4;
+                    end
 
-                    %Filter out dim particles
-                    meanInts = [data.MeanIntensity];
-
-                    thInt = prctile(Ispot(:), 90);
-                    data(meanInts <= thInt) = [];
+                    % %Filter out dim particles
+                    % meanInts = [data.MeanIntensity];
+                    % 
+                    % %thInt = prctile(Ispot(:), 40);
+                    % thInt = 0;
+                    % data(meanInts <= thInt) = [];
 
                     % for ii = 1:numel(data)
                     %     loc = round(data(ii).Centroid);
@@ -109,11 +112,7 @@ classdef FreeMyosinTracker
                     % end
 
                     %Track particles
-                    try
-                        L = assignToTrack(L, iT, data);
-                    catch
-                        keyboard
-                    end
+                    L = assignToTrack(L, iT, data);
 
                     %--Generate output movies and images--%
                     expandSize = 6;
@@ -143,6 +142,7 @@ classdef FreeMyosinTracker
                                 'ShapeColor', 'magenta');
                             catch
                                 continue
+                                %Happens if centroid contains NaNs
                             end
                         end                      
 
@@ -155,16 +155,16 @@ classdef FreeMyosinTracker
                     % keyboard
                     writeVideo(vid, Iout);
 
-                    if iT == 1
-
-                        imwrite(filamentMask, fullfile(outputFolder, [fn, '.tif']), 'Compression', 'none')
-
-                    else
-
-                        imwrite(filamentMask, fullfile(outputFolder, [fn, '.tif']), 'Compression', 'none', ...
-                            'writeMode', 'append')
-
-                    end
+                    % if iT == 1
+                    % 
+                    %     imwrite(filamentMask, fullfile(outputFolder, [fn, '.tif']), 'Compression', 'none')
+                    % 
+                    % else
+                    % 
+                    %     imwrite(filamentMask, fullfile(outputFolder, [fn, '.tif']), 'Compression', 'none', ...
+                    %         'writeMode', 'append')
+                    % 
+                    % end
 
                     
 
@@ -268,7 +268,7 @@ classdef FreeMyosinTracker
             %  difference of Gaussians filter.
 
             ip = inputParser;
-            addParameter(ip, 'spotRange', [3 6]);
+            addParameter(ip, 'spotRange', [3 8]);
             parse(ip, varargin{:})
 
             I = medfilt2(I, [3 3]);
@@ -281,12 +281,12 @@ classdef FreeMyosinTracker
 
             dog = dg1 - dg2;
 
-            mask = dog > 10;
+            mask = dog > 15;
             mask = bwareaopen(mask, 2);
 
             dd = -bwdist(~mask);
             dd(~mask) = -Inf;
-            dd = imhmin(dd, 0.1);
+            dd = imhmin(dd, 0.2);
 
             L = watershed(dd);
 
@@ -296,9 +296,9 @@ classdef FreeMyosinTracker
             mask = bwmorph(mask, 'hbreak');
             %mask = bwmorph(mask, 'shrink', 1);
 
-            mask = imresize(mask, 0.25, 'nearest');
+            % mask = imresize(mask, 0.25, 'nearest');
 
-            % imshow(mask, 'InitialMagnification', 400)
+            %imshow(mask, 'InitialMagnification', 400)
      
 
         end
