@@ -1,25 +1,50 @@
-function joinTracks(matfilePath, track1, track2)
+function joinTracks(matfilePath, tracksToJoin)
+%JOINTRACKS  Join tracks together manually
+%
+%  JOINTRACKS(MATFILE, T) will join tracks in the specified file together.
+%  T should be either an array or a cell of arrays specifying which tracks
+%  to join together. Note that the function will join all tracks to the
+%  first ID specified.
+%
+%  Example:
+%  joinTracks('D:\Work\Projects\massimo\data\20250311\Processed\Movie_A1.mat', [4, 11, 25, 26, 33, 37, 38]);
+%
+%  joinTracks('D:\Work\Projects\massimo\data\20250311\Processed\Movie_A1.mat', {[4, 11, 25], [2, 9, 16]});
+
+%Parse inputs
+if ~exist(matfilePath, 'file')
+    error('joinTracks:FileNotFound', ...
+        'Could not find file %s.', matfilePath)
+end
+
+if ~iscell(tracksToJoin) && ismatrix(tracksToJoin)
+    tracksToJoin = {tracksToJoin};
+end
 
 load(matfilePath);
 
 tracks = L.tracks;
 
-for xx = 1:numel(track1)
+for iSetsOfTracks = 1:numel(tracksToJoin)
 
-    tracks = joinTrack(tracks, track1(xx), track2(xx), 'true');
+    for xx = 2:numel(tracksToJoin{iSetsOfTracks})
+
+        tracks = joinTrack(tracks, tracksToJoin{iSetsOfTracks}(1), tracksToJoin{iSetsOfTracks}(xx), 'true');
+    end
+
 end
 
 
-[~, fn] = fileparts(matfilePath);
+[fPath, fn] = fileparts(matfilePath);
 
-save([fn, '_edited.mat'], 'tracks');
+save(fullfile(fPath, [fn, '_edited.mat']), 'tracks');
 
 %Remake the movie
 nFrames = numel(imfinfo(file));
 
 expandSize = 6;
 
-vid = VideoWriter([fn, '_edited.avi']);
+vid = VideoWriter(fullfile(fPath, [fn, '_edited.avi']));
 vid.FrameRate = 5;
 open(vid)
 
